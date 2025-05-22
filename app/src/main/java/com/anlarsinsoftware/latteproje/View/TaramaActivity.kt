@@ -27,7 +27,6 @@ import java.nio.channels.FileChannel
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import android.graphics.ImageFormat
-import android.graphics.Matrix
 import android.graphics.YuvImage
 import android.graphics.Rect
 import android.media.Image
@@ -60,8 +59,6 @@ class TaramaActivity : AppCompatActivity() {
         }
 
         tfliteInterpreter = loadModel()
-
-
     }
 
     private val requestPermissions = registerForActivityResult(
@@ -78,6 +75,8 @@ class TaramaActivity : AppCompatActivity() {
         ContextCompat.checkSelfPermission(baseContext, it) == PackageManager.PERMISSION_GRANTED
     }
 
+
+
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
 
@@ -92,7 +91,7 @@ class TaramaActivity : AppCompatActivity() {
             // ImageAnalysis - analiz için
             imageAnalyzerExecutor = Executors.newSingleThreadExecutor()
             val imageAnalyzer = ImageAnalysis.Builder()
-                .setTargetResolution(Size(128,128))// modele göre boyut
+                .setTargetResolution(Size(224,224)) // modele göre boyut
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
                 .also {
@@ -116,21 +115,9 @@ class TaramaActivity : AppCompatActivity() {
         }, ContextCompat.getMainExecutor(this))
     }
     private fun processImageProxy(imageProxy: ImageProxy) {
-        val rawBitmap = imageProxyToBitmap(imageProxy) ?: return
-// Rotate
-        val matrix = Matrix().apply {
-            postRotate(imageProxy.imageInfo.rotationDegrees.toFloat())
-        }
-        val bitmap = Bitmap.createBitmap(rawBitmap, 0, 0, rawBitmap.width, rawBitmap.height, matrix, true)
-
+        val bitmap = imageProxyToBitmap(imageProxy)
         if (bitmap != null) {
             val result = runModel(bitmap)
-            if (result < 0) {
-                runOnUiThread {
-                    binding.statusText.text = "Tahmin yapılamadı"
-                }
-            }
-
             val label = if (result == 0) "Hatalı Ürün" else "Sağlam Ürün"
 
             runOnUiThread {
@@ -146,19 +133,26 @@ class TaramaActivity : AppCompatActivity() {
                 }
             }
         }
-
         imageProxy.close()
     }
     fun listeleSaglamlar() {
         val currentTime = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
         val db = UrunlerDatabase(this)
         db.kaydet(currentTime)
+
+
+
     }
+
+
 
     @OptIn(ExperimentalGetImage::class)
     private fun imageProxyToBitmap(imageProxy: ImageProxy): Bitmap? {
         val image = imageProxy.image ?: return null
+
+        // YUV formatından NV21 formatına dönüştürme
         val nv21 = yuv420ToNv21(image)
+
         val yuvImage = YuvImage(nv21, ImageFormat.NV21, image.width, image.height, null)
         val out = ByteArrayOutputStream()
         yuvImage.compressToJpeg(Rect(0, 0, image.width, image.height), 100, out)
@@ -218,6 +212,10 @@ class TaramaActivity : AppCompatActivity() {
         startActivity(Intent(this, MainActivity::class.java))
     }
 
+    // TENSORFLOW
+
+
+
     fun runModel(bitmap: Bitmap): Int {
         return try {
             val inputBuffer = preprocessBitmap(bitmap)
@@ -248,38 +246,26 @@ class TaramaActivity : AppCompatActivity() {
     }
 
     fun preprocessBitmap(bitmap: Bitmap): ByteBuffer {
-        val width = 128
-        val height = 128
-
-        // Bitmap'i modelin istediği boyuta getir
-        val resizedBitmap = Bitmap.createScaledBitmap(bitmap, width, height, true)
-
-        // Float32 buffer: 1 * 128 * 128 * 3 * 4 = 196608 byte
-        val inputBuffer = ByteBuffer.allocateDirect(1 * width * height * 3 * 4)
+        val resized = Bitmap.createScaledBitmap(bitmap, 224, 224, true) // modele göre boyut
+        val inputBuffer = ByteBuffer.allocateDirect(1 * 224 * 224 * 3 * 4) // 1 adet, 224x224 RGB, float32
         inputBuffer.order(ByteOrder.nativeOrder())
 
-        val pixels = IntArray(width * height)
-        resizedBitmap.getPixels(pixels, 0, width, 0, 0, width, height)
-
+        val pixels = IntArray(224 * 224)
+        resized.getPixels(pixels, 0, 224, 0, 0, 224, 224)
         for (pixel in pixels) {
             val r = (pixel shr 16 and 0xFF) / 255.0f
             val g = (pixel shr 8 and 0xFF) / 255.0f
             val b = (pixel and 0xFF) / 255.0f
+//            val r = ((pixel shr 16 and 0xFF) - 127.5f) / 127.5f
+//            val g = ((pixel shr 8 and 0xFF) - 127.5f) / 127.5f
+//            val b = ((pixel and 0xFF) - 127.5f) / 127.5f
 
             inputBuffer.putFloat(r)
             inputBuffer.putFloat(g)
             inputBuffer.putFloat(b)
         }
-
         return inputBuffer
     }
-
-
-
-
-
-
-
 
 
 
