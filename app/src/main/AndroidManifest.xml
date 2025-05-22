@@ -14,16 +14,16 @@
         android:theme="@style/Theme.LatteProje"
         tools:targetApi="31">
         <activity
-            android:name=".HataliUrunActivity"
+            android:name=".View.HataliUrunActivity"
             android:exported="false" />
         <activity
-            android:name=".UrunlerActivity"
+            android:name=".View.UrunlerActivity"
             android:exported="false" />
         <activity
-            android:name=".TaramaActivity"
+            android:name=".View.TaramaActivity"
             android:exported="false" />
         <activity
-            android:name=".MainActivity"
+            android:name=".View.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/white"
-    tools:context=".TaramaActivity">
+    tools:context=".View.TaramaActivity">
 
     <LinearLayout
         android:id="@+id/titleBar"
@@ -41,6 +41,14 @@
             android:textColor="@color/indigo_500"
             android:textSize="20sp"
             android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="GERI DONUT"
+            android:textAlignment="center"
+            android:textColor="@color/indigo_500" />
     </LinearLayout>
 
     <androidx.camera.view.PreviewView
@@ -52,9 +60,9 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:scaleType="fitCenter"
-        android:layout_margin="8dp" />
+        android:layout_margin="8dp" >
 
-
+    </androidx.camera.view.PreviewView>
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>
